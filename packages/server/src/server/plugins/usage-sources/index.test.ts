@@ -725,3 +725,39 @@ test("attempt ordering keeps its timestamp while retained freshness records succ
   expect(failure?.fetchedAt).toBe(new Date(3000).toISOString());
   expect(failure?.lastSuccessful?.fetchedAt).toBe(success?.successfulAt);
 });
+
+test("failed discovery preserves history until discovery confirms account removal", async () => {
+  let discoveryFails = false;
+  let present = true;
+  let available = true;
+  const registry = new UsageSourceRegistry(() => 1000, 300_000, { warn: () => {} });
+  registry.register(
+    source({
+      id: "source",
+      discover: async () => {
+        if (discoveryFails) throw new Error("Login store temporarily unavailable");
+        return present ? [{ key: "account", input: {} }] : [];
+      },
+      fetch: async () =>
+        available
+          ? { status: "available", windows: [{ id: "weekly", label: "Weekly", usedPct: 42 }] }
+          : { status: "error", error: "Rate limited" },
+    }),
+  );
+  const [success] = await registry.listReports();
+  available = false;
+  discoveryFails = true;
+  const [duringDiscoveryFailure] = await registry.listReports({ forceRefresh: true });
+  expect(duringDiscoveryFailure?.lastSuccessful).toEqual({
+    fetchedAt: success?.successfulAt,
+    report: success?.report,
+  });
+  discoveryFails = false;
+  const [afterDiscoveryRecovery] = await registry.listReports({ forceRefresh: true });
+  expect(afterDiscoveryRecovery?.lastSuccessful).toEqual(duringDiscoveryFailure?.lastSuccessful);
+  expect(afterDiscoveryRecovery?.report).toEqual({ status: "error", error: "Rate limited" });
+  present = false;
+  expect(await registry.listReports()).toEqual([]);
+  present = true;
+  expect((await registry.listReports())[0]?.lastSuccessful).toBeUndefined();
+});

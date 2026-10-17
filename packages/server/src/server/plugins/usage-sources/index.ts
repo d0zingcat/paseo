@@ -99,7 +99,7 @@ export class UsageSourceRegistry {
     } else if (options.reportIds !== undefined) {
       ids = options.reportIds;
     } else {
-      this.defaults = await this.discover({ kind: "global" });
+      this.defaults = await this.discover({ kind: "global" }, this.defaults);
       this.mergeKnown();
       ids = [...this.known.keys()];
     }
@@ -191,7 +191,10 @@ export class UsageSourceRegistry {
     );
   }
 
-  private async discover(scope: UsageScope): Promise<Map<string, KnownReport>> {
+  private async discover(
+    scope: UsageScope,
+    previous: ReadonlyMap<string, KnownReport> = new Map(),
+  ): Promise<Map<string, KnownReport>> {
     const discovered = await Promise.all(
       [...this.sources.values()].map(async (source) => {
         const reports = new Map<string, KnownReport>();
@@ -218,6 +221,11 @@ export class UsageSourceRegistry {
           }
         } catch (error) {
           this.logger.warn({ sourceId: source.id, err: error }, "Usage source discovery failed");
+          // A failed store read does not confirm removal. Session discovery has no previous
+          // mapping because a resumed agent may use a different launch environment.
+          for (const [id, report] of previous) {
+            if (report.source === source) reports.set(id, report);
+          }
         }
         return reports;
       }),
