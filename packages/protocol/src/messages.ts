@@ -3336,6 +3336,14 @@ const TerminalClientMessageSchema = z.discriminatedUnion("type", [
     cols: z.number(),
     intent: z.enum(["claim", "update"]).optional(),
   }),
+  // The client's terminal default colors (#rrggbb), so the daemon answers OSC 10/11/12 queries
+  // with the theme the user actually sees. Apps such as Codex pick light or dark styling from them.
+  z.object({
+    type: z.literal("colors"),
+    foreground: z.string(),
+    background: z.string(),
+    cursor: z.string().optional(),
+  }),
   z.object({
     type: z.literal("mouse"),
     row: z.number(),

@@ -652,6 +652,21 @@ export function TerminalPane({
     isConnected,
   ]);
 
+  // Terminal apps (Codex, nvim) ask the PTY for its colors to choose a light or dark UI; the
+  // daemon can only answer with the theme this client reports.
+  const terminalColors = theme.colors.terminal;
+  useEffect(() => {
+    if (!client || !isConnected || !terminalId) {
+      return;
+    }
+    client.sendTerminalInput(terminalId, {
+      type: "colors",
+      foreground: terminalColors.foreground,
+      background: terminalColors.background,
+      cursor: terminalColors.cursor,
+    });
+  }, [client, isConnected, terminalId, terminalColors]);
+
   useEffect(() => {
     pendingTerminalInputRef.current = [];
     const nextTerminalId = resolveTerminalStreamTarget({

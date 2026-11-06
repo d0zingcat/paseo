@@ -981,6 +981,26 @@ describe.skipIf(isPlatform("win32"))("terminal title", () => {
     unsubscribeTitle();
   });
 
+  it("answers OSC 11 background queries with the colors the client sent", async () => {
+    const session = trackSession(
+      await createTerminal({
+        workspaceId: "ws-test",
+        cwd: "/tmp",
+        shell: "/bin/sh",
+        env: { PS1: "$ " },
+      }),
+    );
+    await waitForLines(session, ["$"]);
+    session.send({ type: "colors", foreground: "#111827", background: "#ffffff" });
+    // The reply is 25 bytes: ESC ] 11 ; rgb:ffff/ffff/ffff ESC \
+    session.send({
+      type: "input",
+      data: "stty raw -echo; printf '\\033]11;?\\033\\\\'; printf 'BG=%s\\n' \"$(dd bs=1 count=25 2>/dev/null | tr -d '\\033\\\\')\"\r",
+    });
+
+    await waitForState(session, (state) => getLines(state).includes("BG=]11;rgb:ffff/ffff/ffff"));
+  });
+
   it("keeps preset titles instead of applying OSC title updates", async () => {
     const session = trackSession(
       await createTerminal({
