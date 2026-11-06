@@ -42,11 +42,20 @@ let nodePtySpawnHelperChecked = false;
 const TERMINAL_TITLE_DEBOUNCE_MS = 150;
 const TERMINAL_EXIT_OUTPUT_LINE_LIMIT = 12;
 const TERMINAL_EXIT_OUTPUT_CHAR_LIMIT = 16000;
-const TERMINAL_OSC_COLOR_QUERY_RESPONSES = new Map<number, string>([
-  [10, "rgb:e6e6/e6e6/e6e6"],
-  [11, "rgb:0b0b/0b0b/0b0b"],
-  [12, "rgb:e6e6/e6e6/e6e6"],
-]);
+const DEFAULT_TERMINAL_COLORS = { foreground: "#e6e6e6", background: "#0b0b0b" };
+
+// xterm OSC color replies use 16-bit channels: rgb:rrrr/gggg/bbbb.
+function hexToOscRgb(hex: string): string | null {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+  const channels = [0, 2, 4].map((i) =>
+    match[1]
+      .slice(i, i + 2)
+      .toLowerCase()
+      .repeat(2),
+  );
+  return `rgb:${channels.join("/")}`;
+}
 
 export interface TerminalExitInfo {
   exitCode: number | null;
@@ -75,6 +84,7 @@ export interface TerminalCommandFinishedInfo {
 export type ClientMessage =
   | { type: "input"; data: string }
   | { type: "resize"; rows: number; cols: number }
+  | { type: "colors"; foreground: string; background: string; cursor?: string }
   | { type: "mouse"; row: number; col: number; button: number; action: "down" | "up" | "move" };
 
 export type ServerMessage =
@@ -774,6 +784,7 @@ export async function createTerminal(
   const titleChangeListeners = new Set<(title?: string) => void>();
   let killed = false;
   let disposed = false;
+  let colors = { ...DEFAULT_TERMINAL_COLORS, cursor: DEFAULT_TERMINAL_COLORS.foreground };
   let exitEmitted = false;
   let processExited = false;
   const processExitWaiters = new Set<() => void>();
@@ -911,9 +922,15 @@ export async function createTerminal(
     ptyProcess.write(`\x1b[?${buffer.cursorY + 1};${buffer.cursorX + 1}R`);
     return true;
   });
-  for (const [code, response] of TERMINAL_OSC_COLOR_QUERY_RESPONSES) {
+  for (const code of [10, 11, 12]) {
     terminal.parser.registerOscHandler(code, (data) => {
       if (data.trim() !== "?") {
+        return false;
+      }
+      const response = hexToOscRgb(
+        { 10: colors.foreground, 11: colors.background, 12: colors.cursor }[code] ?? "",
+      );
+      if (!response) {
         return false;
       }
       ptyProcess.write(`\x1b]${code};${response}\x1b\\`);
@@ -1173,6 +1190,13 @@ export async function createTerminal(
         terminal.resize(msg.cols, msg.rows);
         ptyProcess.resize(msg.cols, msg.rows);
         stateRevision += 1;
+        break;
+      case "colors":
+        colors = {
+          foreground: msg.foreground,
+          background: msg.background,
+          cursor: msg.cursor ?? msg.foreground,
+        };
         break;
       case "mouse":
         // Mouse events can be sent as escape sequences if terminal supports it
