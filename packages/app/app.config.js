@@ -80,6 +80,19 @@ const variants = {
       fallbackRelativePath: "./.secrets/GoogleService-Info.prod.plist",
     }),
   },
+  // Long-lived fork identity: a separate bundle ID so it installs beside the official app.
+  fork: {
+    name: "Paseo Fork",
+    packageId: process.env.PASEO_FORK_BUNDLE_ID ?? "com.d0zingcat.paseo",
+    googleServicesFile: resolveSecretFile({
+      envKey: "GOOGLE_SERVICES_FILE_FORK",
+      fallbackRelativePath: "./.secrets/google-services.fork.json",
+    }),
+    googleServiceInfoPlist: resolveSecretFile({
+      envKey: "GOOGLE_SERVICE_INFO_PLIST_FORK",
+      fallbackRelativePath: "./.secrets/GoogleService-Info.fork.plist",
+    }),
+  },
   development: {
     name: "Paseo Debug",
     packageId: "sh.paseo.debug",
@@ -198,9 +211,9 @@ export default {
       diagnosticBuildTime: process.env.PASEO_DIAGNOSTIC_BUILD_TIME,
       router: {},
       eas: {
-        projectId: "0e7f65ce-0367-46c8-a238-2b65963d235a",
+        projectId: process.env.EAS_PROJECT_ID ?? "0e7f65ce-0367-46c8-a238-2b65963d235a",
       },
     },
-    owner: "getpaseo",
+    owner: process.env.EXPO_OWNER ?? "getpaseo",
   },
 };
