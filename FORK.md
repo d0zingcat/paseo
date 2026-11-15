@@ -24,8 +24,8 @@ This is a long-lived fork of [getpaseo/paseo](https://github.com/getpaseo/paseo)
 
 Set these before `eas build --profile fork`:
 
-- `EXPO_OWNER`: your Expo account.
-- `EAS_PROJECT_ID`: from `eas init`.
+- `EXPO_OWNER`: defaults to `d0zingcat`.
+- `EAS_PROJECT_ID`: defaults to the fork's EAS project.
 - `PASEO_FORK_BUNDLE_ID`: defaults to `com.d0zingcat.paseo`.
 - `ascAppId` in `packages/app/eas.json` under `submit.fork.ios`, once the app exists in App Store Connect.
 

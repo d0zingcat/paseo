@@ -211,9 +211,9 @@ export default {
       diagnosticBuildTime: process.env.PASEO_DIAGNOSTIC_BUILD_TIME,
       router: {},
       eas: {
-        projectId: process.env.EAS_PROJECT_ID ?? "0e7f65ce-0367-46c8-a238-2b65963d235a",
+        projectId: process.env.EAS_PROJECT_ID ?? "aa7ed891-2ff3-4dcc-a03b-000df6206232",
       },
     },
-    owner: process.env.EXPO_OWNER ?? "getpaseo",
+    owner: process.env.EXPO_OWNER ?? "d0zingcat",
   },
 };
